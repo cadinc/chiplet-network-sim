@@ -4,26 +4,36 @@
 
 #include "traffic_manager.h"
 
+// global variables
 Parameters* param;
 TrafficManager* TM;
 System* network;
+boost::mt19937 gen;  // random number generator
 
+// multi-threading variables
 static std::vector<std::thread> threads;
-static volatile bool all_finished = false;
+static volatile bool finished = false; //
 static std::condition_variable cv;
-static std::atomic_uint64_t pkt_i;  // atomic counter, shared by all threads
+static std::atomic_uint64_t pkt_i;  // atomic index towards the next packet to be dispatched
 // per thread vavriable
 static std::mutex* mtxs;
 static volatile bool* thread_ready;
-static volatile bool* task_ready;
+static volatile bool* worker_launch;  // worker thread launch signal
 
+// Each worker (thread) repeatedly excutes:
+// 1. fetches issue_width packets from the all_packets vector in order
+// 2. updates packets one by one
+// Until all packets are processed
 static void update_packets(std::vector<Packet*>& packets, System* system) {
   uint64_t i = pkt_i.load();
   uint64_t vec_size = packets.size();
+  // Each thread fetches issue_width packets at a time
   static int issue_width = param->issue_width;
   while (i < vec_size) {
+    // try to fetch issue_width packets
     if (pkt_i.compare_exchange_strong(i, i + issue_width)) {
       uint64_t max_i = std::min(i + issue_width, vec_size);
+      // update packets one by one
       do {
         system->update(*packets[i]);
       } while (++i < max_i);
@@ -32,28 +42,38 @@ static void update_packets(std::vector<Packet*>& packets, System* system) {
   }
 }
 
+// Worker thread function
 static void worker(std::vector<Packet*>& packets, System* s, int id) {
   std::unique_lock<std::mutex> lk(mtxs[id]);
   thread_ready[id] = true;
-  cv.wait(lk);
-  while (!all_finished) {
+  cv.wait(lk);  // unlock mtxs[id] and wait for cv.notify_all()
+  while (!finished) {
     update_packets(packets, s);
-    task_ready[id] = false;
-    while (!task_ready[id] && !all_finished) cv.wait(lk);
+    worker_launch[id] = false;
+    while (!worker_launch[id] && !finished) cv.wait(lk);
   }
 }
 
+// Run one cycle of the simulation by iterating through all packets twice:
+// 1. Release the link status and delete arrived packets
+// 2. Update the packets
 static void run_one_cycle(std::vector<Packet*>& vec_pkts, System* system) {
-  // iterate through all messages, update link status
   // single thread, fisrt come first serve
   uint64_t j = 0;
   uint64_t vecsize = vec_pkts.size();
   for (auto i = 0; i < vecsize; ++i) {
     Packet*& pkt = vec_pkts[i];
+    // update link status
     if (pkt->releaselink_ == true) {
-      pkt->tail_trace().buffer->release_link(*pkt);
+      pkt->tail_trace().buffer->release_in_link(*pkt);
+      if (pkt->leaving_vc_.buffer != nullptr) // not leaving the source node
+        pkt->leaving_vc_.buffer->release_sw_link();
+      else {  // leaving the source node
+        assert(pkt->leaving_vc_.id == pkt->source_);
+      }
       pkt->releaselink_ = false;
     }
+    // delete arrived packets
     if (pkt->finished_) {
       delete pkt;
     } else {
@@ -63,21 +83,23 @@ static void run_one_cycle(std::vector<Packet*>& vec_pkts, System* system) {
   }
   vec_pkts.resize(j);
 
+  // update packets, multi-threading
   pkt_i.store(0);
-  if (vec_pkts.size() < param->threads * 1 || param->threads < 2) {
+  if (vec_pkts.size() < param->threads * 1 || param->threads < 2) {  // single thread
     update_packets(vec_pkts, system);
   } else {
     for (int i = 0; i < param->threads; ++i) {
-      task_ready[i] = true;
+      worker_launch[i] = true;
       mtxs[i].unlock();
     }
     cv.notify_all();
-    // wait all threads finish releasing links
+    // wait all threads finish
     for (int i = 0; i < param->threads; ++i) {
-      while (task_ready[i])
+      while (worker_launch[i])
         ;
-      mtxs[i].lock();
+      mtxs[i].lock(); // acquire the lock that released by the cv.wait()
     }
+    // All workers are waiting for cv.notify_all() at the second cv.wait()
   }
 }
 
@@ -87,17 +109,17 @@ int main(int argc, char* argv[]) {
   param = new Parameters(config_file);
   network = System::New(param->topology);
   TM = new TrafficManager();
-  srand(1);
+  gen.seed(1);
 
   uint64_t timeout_limit = param->timeout_limit;
-  float maximum_receiving_rate = 0;
+  double maximum_receiving_rate = 0;
   std::vector<Packet*> all_packets;
 
   // Multi-threads initialization
   if (param->threads > 1) {
     mtxs = new std::mutex[param->threads];
     thread_ready = new bool[param->threads];
-    task_ready = new bool[param->threads];
+    worker_launch = new bool[param->threads];
     pkt_i.store(0);
     for (auto i = 0; i < param->threads; ++i) {
       thread_ready[i] = false;
@@ -106,13 +128,13 @@ int main(int argc, char* argv[]) {
     for (auto i = 0; i < param->threads; ++i) {  // wait for all threads ready
       while (!thread_ready[i])
         ;
-      mtxs[i].lock();  // All threads are
+      mtxs[i].lock();  // acquire the lock that released by the cv.wait()
     }
-    // All threads are waiting for cv.notify_all()
+    // All workers are waiting for cv.notify_all() at the first cv.wait()
   }
 
-  if (param->traffic == "netrace") {
-    TM->injection_rate_ = (float)TM->CTX->input_trheader->num_packets /
+  if (param->traffic == "netrace") {  // inject according to the time_stamp
+    TM->injection_rate_ = (double)TM->CTX->input_trheader->num_packets /
                           TM->CTX->input_trheader->num_cycles / network->num_cores_;
     for (uint64_t i = 0; i < TM->CTX->input_trheader->num_cycles + 1000; i++) {
       TM->genMes(all_packets, i);
@@ -120,11 +142,13 @@ int main(int argc, char* argv[]) {
     }
     TM->print_statistics();
     nt_close_trfile(TM->CTX);
-  } else
-    while (true) {
+  } else {  // gradually increase the injection rate to find the saturation point
+    bool saturated = false;
+    while (!saturated) {
       TM->injection_rate_ += param->injection_increment;
 
-      for (uint64_t i = 0; i < param->warmup_time; i++) {
+      //  warm up for 50% of the simulation time
+      for (uint64_t i = 0; i < param->simulation_time / 2; i++) {
         TM->genMes(all_packets);
         run_one_cycle(all_packets, network);
       }
@@ -143,7 +167,8 @@ int main(int argc, char* argv[]) {
                   << "Saturation point!" << std::endl
                   << "Maximum average receiving traffic: " << maximum_receiving_rate
                   << " flits/(node*cycle)" << std::endl;
-#ifdef DEBUG
+        saturated = true;
+#ifdef DEBUG // check deadlock
         for (uint64_t i = 0; i < param->simulation_time * 2; i++) {  // try to drain
           run_one_cycle(all_packets, network);
           if (all_packets.size() == 0) {
@@ -153,15 +178,15 @@ int main(int argc, char* argv[]) {
         }
         if (all_packets.size() != 0) std::cerr << "Possible Deadlock!" << std::endl;
 #endif  // DEBUG
-        break;
       }
       for (auto pkt : all_packets) delete pkt;
       all_packets.clear();
       network->reset();
-      srand(1);
+      gen.seed(1);
     }
+  }
   if (param->threads > 1) {
-    all_finished = true;
+    finished = true;
     for (int i = 0; i < param->threads; ++i) {
       mtxs[i].unlock();
     }
@@ -171,7 +196,7 @@ int main(int argc, char* argv[]) {
     }
     delete[] mtxs;
     delete[] thread_ready;
-    delete[] task_ready;
+    delete[] worker_launch;
   }
   delete TM;
   delete network;
