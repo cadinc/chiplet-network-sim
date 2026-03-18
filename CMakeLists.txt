@@ -1,6 +1,6 @@
 ﻿cmake_minimum_required (VERSION 3.8)
 
-project (ChipletNetworkSim VERSION 1.0
+project (ChipletNetworkSim VERSION 0.9
 						   DESCRIPTION "A cycle-accurate packet-parallel network simulator."
                            LANGUAGES C CXX)
 
@@ -14,7 +14,6 @@ message("CMAKE_CXX_FLAGS_DEBUG value is ${CMAKE_CXX_FLAGS_DEBUG}")
 message("CMAKE_CXX_FLAGS_RELEASE value is ${CMAKE_CXX_FLAGS_RELEASE}")
 message("CMAKE_CXX_FLAGS_RELWITHDEBINFO is ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 
-# Find Boost
 find_package(Boost)
 if(Boost_FOUND)
 include_directories(${Boost_INCLUDE_DIRS})

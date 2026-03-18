@@ -107,7 +107,7 @@ void Buffer::release_sw_link() {
   sw_link_used_.store(false);
 }
 
-void Buffer::reset() {
+void Buffer::clear_buffer() {
   in_link_used_.store(false);
   sw_link_used_.store(false);
   for (int i = 0; i < vc_num_; ++i) {

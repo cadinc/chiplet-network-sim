@@ -17,7 +17,7 @@ Yinxiao Feng, Yuchen Wei, Dong Xiang and Kaisheng Ma. Evaluating Chiplet-based L
 - netrace (optional, modified from https://github.com/booksim/netrace)
 	- bzip2
 
-### Usage 
+### Usage: 
 - Windows
   - Visual Studio 2022
   - Open the directory as a cmake project
@@ -28,10 +28,10 @@ Yinxiao Feng, Yuchen Wei, Dong Xiang and Kaisheng Ma. Evaluating Chiplet-based L
 ```
 sudo apt install cmake ninja-build build-essential libboost-all-dev libbz2-dev
 cd chiplet-network-sim
-cmake --preset Release
-cd builds/Release/
+cmake --preset Linux-Release
+cd builds/Linux-Release/
 cmake --build .
-./ChipletNetworkSim ../../input/multiple_chip_mesh_4x4.ini
+./ChipletNetworkSim ../../input/dragonfly/global-chiplet-16.ini
 ```
 
 ### Acknowledgement

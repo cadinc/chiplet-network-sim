@@ -35,6 +35,8 @@ class System {
   int num_cores_;
 
   // router parameters
+  int routing_time_;
+  int vc_allocating_time_;
   std::string router_stages_;
 
   // simulation parameters
