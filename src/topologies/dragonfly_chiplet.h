@@ -40,10 +40,10 @@ class CGroup : public Chip {
   ~CGroup();
 
   void set_chip(System* dragonfly, int Cgroup_id) override;
-  inline NodeInCG* get_node(int chiplet_id) const {
+  inline NodeInCG* get_node(int chiplet_id) {
     return static_cast<NodeInCG*>(Chip::get_node(NodeID(chiplet_id)));
   }
-  inline NodeInCG* get_node(NodeID id) const { return static_cast<NodeInCG*>(Chip::get_node(id)); }
+  inline NodeInCG* get_node(NodeID id) { return static_cast<NodeInCG*>(Chip::get_node(id)); }
 
   DragonflyChiplet* dragonfly_;
   int& num_chiplets_;
@@ -75,8 +75,7 @@ class DragonflyChiplet : public System {
 
   void routing_algorithm(Packet& s) const override;
   void MIN_routing(Packet& s) const;
-  void XY_routing(Packet& s, NodeID dest, int vcb) const;
-  void XY_adaptive_routing(Packet& s, NodeID dest) const;
+  void XY_routing(Packet& s, NodeID dest) const;
 
   inline NodeInCG* get_node(NodeID id) const {
     return static_cast<NodeInCG*>(System::get_node(id));
@@ -112,7 +111,6 @@ class DragonflyChiplet : public System {
   int cgroup_per_wgroup_;
   int num_wgroup_;
   int& num_cgroup_;
-  bool mis_routing;
 
   // <port_id, node_id>
   std::map<int, int> port_node_map_;

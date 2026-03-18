@@ -42,7 +42,7 @@ class Node {
   ~Node();
 
   virtual void set_node(Chip* chip, NodeID id);
-  void reset();
+  void clear_all();
 
   NodeID id_;
   Chip* chip_;

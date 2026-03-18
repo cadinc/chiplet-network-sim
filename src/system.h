@@ -15,7 +15,7 @@ class System {
   void onestage(Packet& s);
   void twostage(Packet& s);
   void Threestage(Packet& s);
-  void routing(Packet& s) const;
+  void routing(Packet& s);
   virtual void routing_algorithm(Packet& s) const = 0;
   void vc_allocate(Packet& s) const;
   void switch_allocate(Packet& s);
@@ -35,6 +35,9 @@ class System {
   int num_cores_;
 
   // router parameters
+  int routing_time_;
+  int vc_allocating_time_;
+  int sw_allocating_time_;
   std::string router_stages_;
 
   // simulation parameters

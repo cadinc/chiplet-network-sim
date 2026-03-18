@@ -34,8 +34,8 @@ void Node::set_node(Chip* chip, NodeID id) {
   id_ = id;
 }
 
-void Node::reset() {
+void Node::clear_all() {
   for (auto in_buffer : in_buffers_) {
-    in_buffer->reset();
+    in_buffer->clear_buffer();
   }
 }

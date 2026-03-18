@@ -13,11 +13,10 @@
 #include <vector>
 
 const std::vector<std::string> router_stage_nums = {"OneStage", "TwoStage", "ThreeStage"};
-const std::vector<std::string> topologies = {"SingleChipMesh", "DragonflySW",
-                                                  "DragonflyChiplet"};
+const std::vector<std::string> topologies = {"SingleChipMesh", "DragonflySW", "DragonflyChiplet"};
 const std::vector<std::string> traffic_patterns = {
     "test",       "uniform",     "hotspot",  "bitcomplement", "bittranspose", "bitreverse",
-    "bitshuffle", "adversarial", "sd_trace", "netrace", "ring_all_reduce", "ring_all_reduce_bi"};
+    "bitshuffle", "adversarial", "sd_trace", "netrace",       "all_to_all"};
 
 struct Channel {
   Channel(int link_width = 0, int link_latency = 0) : width(link_width), latency(link_latency) {}
@@ -31,10 +30,9 @@ struct Channel {
   }
 };
 
-const Channel on_chip_channel(1, 1);
+const Channel on_chip_channel(1, 0);
 const Channel off_chip_parallel_channel(1, 2);
 const Channel off_chip_serial_channel(2, 4);
-const Channel long_distance_channel(1, 10);
 
 struct Parameters {
  public:
@@ -46,20 +44,23 @@ struct Parameters {
   int buffer_size;  // flits
   int vc_number;
   std::string router_stages;
+  int on_chip_latency;
   int processing_time;     // cycles
+  int routing_time;        // cycles
+  int vc_allocating_time;  // cycles
+  int sw_allocating_time;  // cycles
 
   // Workloads
   std::string traffic;
-  int traffic_scale;
   int packet_length;  // # of flits
 
   // Simulation Parameters
   uint64_t simulation_time;
-  double injection_increment;
+  uint64_t warmup_time;
+  float injection_increment;
   int timeout_threshold;
   int timeout_limit;
   int threads;
-  // Each thread fetches issue_width packets at a time
   int issue_width;
 
   // I/O Files
@@ -73,6 +74,8 @@ struct Parameters {
     std::cout << std::setw(20) << "Buffer Size: " << buffer_size << std::endl;
     std::cout << std::setw(20) << "VC number: " << vc_number << std::endl;
     std::cout << std::setw(20) << "Processing Time: " << processing_time << std::endl;
+    std::cout << std::setw(20) << "Routing Time: " << routing_time << std::endl;
+    std::cout << std::setw(20) << "VC Allocating Time: " << vc_allocating_time << std::endl;
     std::cout << std::setw(20) << "Traffic: " << traffic << std::endl;
     std::cout << std::setw(20) << "Packet Length: " << packet_length << std::endl;
     std::cout << std::setw(20) << "Simulation Time: " << simulation_time << std::endl;

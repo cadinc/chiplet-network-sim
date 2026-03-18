@@ -1,3 +1,0 @@
-/Users/abbycremers/Documents/capme/chiplet-network-sim/build/CMakeFiles/ChipletNetworkSim.dir
-/Users/abbycremers/Documents/capme/chiplet-network-sim/build/CMakeFiles/edit_cache.dir
-/Users/abbycremers/Documents/capme/chiplet-network-sim/build/CMakeFiles/rebuild_cache.dir
