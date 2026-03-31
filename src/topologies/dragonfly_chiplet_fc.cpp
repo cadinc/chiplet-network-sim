@@ -54,8 +54,8 @@ CGroupFC::CGroupFC(int k_chiplet, int cgroup_radix, int vc_num, int buffer_size,
   dragonfly_ = nullptr;
   nodes_.reserve(num_chiplets_);
   for (int i = 0; i < num_chiplets_; i++) {
-    nodes_.push_back(new NodeInCGFC(k_chiplet, vc_num, buffer_size,
-                                    internal_channel, external_channel));
+    nodes_.push_back(
+        new NodeInCGFC(k_chiplet, vc_num, buffer_size, internal_channel, external_channel));
   }
 }
 
@@ -131,15 +131,11 @@ DragonflyChipletFC::DragonflyChipletFC() : num_cgroup_(num_chips_), cgroups_(chi
   num_nodes_ = num_cores_;
 
   std::cout << "[DragonflyChipletFC]"
-            << "  k=" << k_node_in_CG_
-            << "  chiplets_per_cg=" << num_chiplets_per_cg_
+            << "  k=" << k_node_in_CG_ << "  chiplets_per_cg=" << num_chiplets_per_cg_
             << "  internal_ports_per_chiplet=" << (num_chiplets_per_cg_ - 1)
-            << "  external_ports_per_cg=" << cgroup_radix_
-            << "  l=" << l_ports_per_cg_
-            << "  g=" << g_ports_per_cg_
-            << "  cg_per_wg=" << cgroup_per_wgroup_
-            << "  num_wg=" << num_wgroup_
-            << "  num_cg=" << num_cgroup_
+            << "  external_ports_per_cg=" << cgroup_radix_ << "  l=" << l_ports_per_cg_
+            << "  g=" << g_ports_per_cg_ << "  cg_per_wg=" << cgroup_per_wgroup_
+            << "  num_wg=" << num_wgroup_ << "  num_cg=" << num_cgroup_
             << "  num_cores=" << num_cores_ << std::endl;
 
   // Build port_node_map: port_id -> node_id
@@ -170,8 +166,9 @@ void DragonflyChipletFC::read_config() {
   k_node_in_CG_ = param->params_ptree.get<int>("Network.k_node", 4);
   algorithm_ = param->params_ptree.get<std::string>("Network.routing_algorithm", "MIN");
   int internal_bandwidth = param->params_ptree.get<int>("Network.internal_bandwidth", 1);
+  int internal_latency = param->params_ptree.get<int>("Network.internal_latency", 1);
   int external_latency = param->params_ptree.get<int>("Network.external_latency", 4);
-  internal_channel_ = Channel(internal_bandwidth, 1);
+  internal_channel_ = Channel(internal_bandwidth, internal_latency);
   external_channel_ = Channel(1, external_latency);
   mis_routing_ = param->params_ptree.get<bool>("Network.mis_routing", false);
 }
@@ -187,7 +184,7 @@ void DragonflyChipletFC::connect_local() {
     for (int i = 0; i < cgroup_per_wgroup_ - 1; i++) {
       int node_id_1 = port_node_map_.at(cgroup_radix_ - 1);
       int node_id_2 = port_node_map_.at(0);
-      Port port1 = get_port(wg_id * cgroup_per_wgroup_ + i,     node_id_1);
+      Port port1 = get_port(wg_id * cgroup_per_wgroup_ + i, node_id_1);
       Port port2 = get_port(wg_id * cgroup_per_wgroup_ + i + 1, node_id_2);
       Port::connect(port1, port2);
       if (wg_id == 0) {
@@ -266,14 +263,14 @@ void DragonflyChipletFC::routing_algorithm(Packet& s) const {
 // direct link. This means the VC requirements may actually be reducible
 // compared with the mesh-based variant; VC 2 is kept for consistency.
 void DragonflyChipletFC::MIN_routing(Packet& s) const {
-  NodeInCGFC* current   = get_node(s.head_trace().id);
+  NodeInCGFC* current = get_node(s.head_trace().id);
   NodeInCGFC* destination = get_node(s.destination_);
 
-  CGroupFC* current_cg  = current->cgroup_;
-  CGroupFC* dest_cg     = destination->cgroup_;
+  CGroupFC* current_cg = current->cgroup_;
+  CGroupFC* dest_cg = destination->cgroup_;
 
   int current_cg_id_in_wg = current_cg->cgroup_id_ % cgroup_per_wgroup_;
-  int dest_cg_id_in_wg    = dest_cg->cgroup_id_ % cgroup_per_wgroup_;
+  int dest_cg_id_in_wg = dest_cg->cgroup_id_ % cgroup_per_wgroup_;
 
   // ---- Case 1: same C-group ----
   // Single internal hop directly to destination chiplet.
@@ -307,7 +304,7 @@ void DragonflyChipletFC::MIN_routing(Packet& s) const {
 
   // ---- Case 3: different W-group (global hop needed) ----
   int current_wg_id = current_cg->wgroup_id_;
-  int dest_wg_id    = dest_cg->wgroup_id_;
+  int dest_wg_id = dest_cg->wgroup_id_;
 
   // Optional misrouting (non-minimal): spread load across global links
   if (mis_routing_) {
