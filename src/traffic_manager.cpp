@@ -294,12 +294,14 @@ void TrafficManager::all_to_all_mess(std::vector<Packet*>& packets) {
           dest1 = (src + 8) % traffic_scale_;
         else if (src % 16 == 10 || src % 16 == 11 || src % 16 == 14 || src % 16 == 15)
           dest1 = (src - 2) % traffic_scale_;
+      } else if (param->topology == "DragonflySW" || param->topology == "DragonflyChipletKN" ||
+                 param->topology == "DragonflyChipletFC" ||
+                 param->topology == "DragonflyChiplet3D") {
+        dest1 = (src + 1) % traffic_scale_;
       }
-      else if (param->topology == "DragonflySW") {
-		dest1 = (src + 1) % traffic_scale_;
-	  }
-      Packet* mess = new Packet(NodeID(src % core_per_chip, src / core_per_chip),
-                                NodeID(dest1 % core_per_chip, dest1 / core_per_chip), message_length_);
+      Packet* mess =
+          new Packet(NodeID(src % core_per_chip, src / core_per_chip),
+                     NodeID(dest1 % core_per_chip, dest1 / core_per_chip), message_length_);
       packets.push_back(mess);
       all_message_num_ += 1;
     }
@@ -324,14 +326,17 @@ void TrafficManager::all_to_all_bi_mess(std::vector<Packet*>& packets) {
           dest2 = (src + 2) % traffic_scale_;
         } else if (src % 16 == 10 || src % 16 == 11 || src % 16 == 14 || src % 16 == 15) {
           dest1 = (src - 2) % traffic_scale_;
-		  dest2 = (src - 8) % traffic_scale_;
+          dest2 = (src - 8) % traffic_scale_;
         }
-      } else if (param->topology == "DragonflySW") {
+      } else if (param->topology == "DragonflySW" || param->topology == "DragonflyChipletKN" ||
+                 param->topology == "DragonflyChipletFC" ||
+                 param->topology == "DragonflyChiplet3D") {
         dest1 = (src + 1) % traffic_scale_;
-        dest2  = (src - 1 + traffic_scale_) % traffic_scale_;
+        dest2 = (src - 1 + traffic_scale_) % traffic_scale_;
       }
-      Packet* mess = new Packet(NodeID(src % core_per_chip, src / core_per_chip),
-                                NodeID(dest1 % core_per_chip, dest1 / core_per_chip), message_length_);
+      Packet* mess =
+          new Packet(NodeID(src % core_per_chip, src / core_per_chip),
+                     NodeID(dest1 % core_per_chip, dest1 / core_per_chip), message_length_);
       packets.push_back(mess);
       mess = new Packet(NodeID(src % core_per_chip, src / core_per_chip),
                         NodeID(dest2 % core_per_chip, dest2 / core_per_chip), message_length_);

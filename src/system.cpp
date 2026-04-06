@@ -1,8 +1,9 @@
 #include "system.h"
 
 #include "dragonfly_chiplet.h"
-#include "dragonfly_chiplet_fc.h"   // <-- new
-#include "dragonfly_chiplet_3d.h"   // <-- new
+#include "dragonfly_chiplet_3d.h"  // <-- new
+#include "dragonfly_chiplet_fc.h"  // <-- new
+#include "dragonfly_chiplet_kn.h"  // <-- new
 #include "dragonfly_sw.h"
 #include "multiple_chip_mesh.h"
 #include "multiple_chip_torus.h"
@@ -33,10 +34,12 @@ System* System::New(const std::string& topology) {
     sys_ptr = new DragonflySW;
   else if (topology == "DragonflyChiplet")
     sys_ptr = new DragonflyChiplet;
-  else if (topology == "DragonflyChipletFC")   // <-- new
+  else if (topology == "DragonflyChipletFC")  // <-- new
     sys_ptr = new DragonflyChipletFC;
-  else if (topology == "DragonflyChiplet3D")    // <-- new
+  else if (topology == "DragonflyChiplet3D")  // <-- new
     sys_ptr = new DragonflyChiplet3D;
+  else if (topology == "DragonflyChipletKN")  // <-- new
+    sys_ptr = new DragonflyChipletKN;
   else {
     std::cerr << "No such a topology!" << std::endl;
     return nullptr;
@@ -46,16 +49,14 @@ System* System::New(const std::string& topology) {
 
 void System::reset() {
   for (auto chip : chips_) {
-    chip->reset();
+    chip->clear_all();
   }
 }
 
 void System::onestage(Packet& p) {
   if (p.candidate_channels_.empty()) routing(p);
-  if (!p.candidate_channels_.empty() && p.next_vc_.buffer == nullptr)
-    vc_allocate(p);
-  if (p.next_vc_.buffer != nullptr && p.switch_allocated_ == false)
-    switch_allocate(p);
+  if (!p.candidate_channels_.empty() && p.next_vc_.buffer == nullptr) vc_allocate(p);
+  if (p.next_vc_.buffer != nullptr && p.switch_allocated_ == false) switch_allocate(p);
 }
 
 void System::twostage(Packet& p) {
@@ -83,8 +84,7 @@ void System::routing(Packet& p) const {
 
 void System::vc_allocate(Packet& p) const {
   VCInfo current_vc = p.head_trace();
-  if (current_vc.buffer == nullptr ||
-      current_vc.head_packet() == &p) {
+  if (current_vc.buffer == nullptr || current_vc.head_packet() == &p) {
     for (auto& vc : p.candidate_channels_) {
       if (vc.buffer->is_empty(vc.vcb))
         if (vc.buffer->allocate_buffer(vc.vcb, p.length_)) {
@@ -121,8 +121,7 @@ void System::update(Packet& p) {
   assert(p.link_timer_ > 0 || p.destination_ != p.tail_trace().id);
 
   p.trans_timer_++;
-  if (p.wait_timer_ == timeout_time_)
-    TM->message_timeout_++;
+  if (p.wait_timer_ == timeout_time_) TM->message_timeout_++;
 
   if (p.head_trace().id == p.source_ && p.process_timer_ > 0) {
     p.process_timer_--;

@@ -96,8 +96,9 @@ DragonflyChiplet::DragonflyChiplet() : num_cgroup_(num_chips_), cgroups_(chips_)
   num_cgroup_ = num_wgroup_ * cgroup_per_wgroup_;
   num_cores_ = num_cgroup_ * num_nodes_per_cg_;
   num_nodes_ = num_cores_;
-  std::cout << "n_per_s:" << num_nodes_per_cg_ << " s_per_g:" << cgroup_per_wgroup_
-            << " g:" << num_wgroup_ << " num_cores:" << num_cores_ << std::endl;
+  std::cout << "num_nodes_per_cg:" << num_nodes_per_cg_
+            << " cgroup_per_wgroup:" << cgroup_per_wgroup_ << " num_wgroup:" << num_wgroup_
+            << " num_cores:" << num_cores_ << std::endl;
   cgroups_.reserve(num_cgroup_);
   for (int cgroup_id = 0; cgroup_id < num_cgroup_; cgroup_id++) {
     cgroups_.push_back(new CGroup(k_node_in_CG_, cgroup_radix_, param->vc_number,
