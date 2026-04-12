@@ -47,8 +47,9 @@ class CGroupKN : public Chip {
   }
 
   int coords_to_id(const std::vector<int>& coords) const;
-  std::vector<int> select_external_nodes() const;
-  std::vector<int> select_from_face(int face_dim, int face_side, int count) const;
+
+  // torus_mode=false: pick boundary nodes (mesh); true: pick uniformly (torus)
+  std::vector<int> select_external_nodes(bool torus_mode) const;
 
   DragonflyChipletKN* dragonfly_;
   int& num_chiplets_;
@@ -94,6 +95,7 @@ class DragonflyChipletKN : public System {
   std::string algorithm_;
   int k_node_in_CG_;
   int n_dims_;
+  bool use_torus_;  // NEW: if true, add wrap-around links to form a torus C-group
 
   Channel internal_channel_;
   Channel external_channel_;
